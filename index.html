@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Telegram Virtual VC</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/livekit-client/dist/livekit-client.umd.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; background: #0f172a; color: white; text-align: center; padding: 20px; }
+        .btn { background: #2563eb; padding: 15px 30px; border: none; color: white; border-radius: 50px; font-size: 18px; cursor: pointer; margin-top: 20px; }
+        .status { margin-top: 20px; color: #38bdf8; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <h2 id="group-title">🎙️ Loading Voice Chat...</h2>
+    <div id="user-info">Fetching Identity...</div>
+    <div id="status" class="status">Connecting...</div>
+    
+    <button class="btn" id="mic-btn" onclick="toggleMic()">Mute Mic</button>
+
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.ready();
+        tg.expand();
+
+        const user = tg.initDataUnsafe.user;
+        const startParam = tg.initDataUnsafe.start_param; 
+
+        let displayGroupName = "Virtual Voice Chat";
+        let finalRoomId = "default_room";
+
+        if (startParam && startParam.startsWith("name_")) {
+            try {
+                const encodedName = startParam.split("name_")[1].split("_id_")[0];
+                displayGroupName = decodeURIComponent(encodedName); 
+                finalRoomId = startParam; 
+            } catch (e) {
+                finalRoomId = startParam;
+            }
+        }
+
+        document.getElementById("group-title").innerText = `🎙️ ${displayGroupName}`;
+
+        if (!user) {
+            document.getElementById("user-info").innerText = "Please open inside Telegram!";
+        } else {
+            document.getElementById("user-info").innerText = `Connected as: ${user.first_name}`;
+            startVoiceChat();
+        }
+
+        let currentRoom;
+
+        async function startVoiceChat() {
+            const statusDiv = document.getElementById("status");
+            try {
+                // ⚠️ NOTE: Is URL ko Railway deployment ke baad apne real URL se replace karna hoga!
+                const backendUrl = "https://your-backend-service.railway.app"; 
+                
+                const response = await fetch(`${backendUrl}/get-token?room=${finalRoomId}&identity=${user.id}&name=${user.first_name}`);
+                const data = await response.json();
+
+                currentRoom = new LiveKitClient.Room();
+                await currentRoom.connect(data.server_url, data.token);
+                statusDiv.innerText = "🎤 Live in Voice Chat!";
+
+                await currentRoom.localParticipant.setMicrophoneEnabled(true);
+
+                currentRoom.on(LiveKitClient.RoomEvent.TrackSubscribed, (track) => {
+                    if (track.kind === 'audio') {
+                        const element = track.attach();
+                        document.body.appendChild(element);
+                    }
+                });
+
+            } catch (error) {
+                statusDiv.innerText = "❌ Connection Failed: " + error.message;
+            }
+        }
+
+        async function toggleMic() {
+            if (!currentRoom) return;
+            const enabled = currentRoom.localParticipant.isMicrophoneEnabled;
+            await currentRoom.localParticipant.setMicrophoneEnabled(!enabled);
+            document.getElementById("mic-btn").innerText = !enabled ? "Mute Mic" : "Unmute Mic";
+            document.getElementById("mic-btn").style.background = !enabled ? "#2563eb" : "#dc2626";
+        }
+    </script>
+</body>
+</html>
