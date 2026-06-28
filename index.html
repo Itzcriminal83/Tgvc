@@ -55,10 +55,12 @@
         async function startVoiceChat() {
             const statusDiv = document.getElementById("status");
             try {
-                // ⚠️ NOTE: Is URL ko Railway deployment ke baad apne real URL se replace karna hoga!
-                const backendUrl = "https://your-backend-service.railway.app"; 
-                
-                const response = await fetch(`${backendUrl}/get-token?room=${finalRoomId}&identity=${user.id}&name=${user.first_name}`);
+                // Kisi poore url ki zaroorat nahi, kyunki dono ek hi jagah hain
+            const backendUrl = "/api"; 
+
+// Ab aapka fetch call automatic correct point par hit karega:
+            const response = await fetch(`${backendUrl}/get-token?room=${finalRoomId}&identity=${user.id}&name=${user.first_name}`);
+
                 const data = await response.json();
 
                 currentRoom = new LiveKitClient.Room();
